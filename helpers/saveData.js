@@ -10,7 +10,7 @@ const saveData = async (data, dataPath) => {
         return reject(err);
       }
 
-      console.log("success");
+      console.log("data saved successfully!");
 
       resolve();
     });

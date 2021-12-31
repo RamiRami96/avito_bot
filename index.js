@@ -14,13 +14,18 @@ const url =
 
 let chatId;
 
-bot.onText(/start/, (msg) => {
+bot.setMyCommands([
+  { command: "/start", description: "Run GC_BOT" },
+  { command: "/stop", description: "Stop GC_BOT" },
+]);
+
+bot.onText(/start/, async (msg) => {
   chatId = msg.from.id;
-  bot.sendMessage(msg.from.id, "Парсер запущен!");
-  saveData(chatId, "id.json");
+  await bot.sendMessage(msg.from.id, "GC_BOT run!");
+  await saveData(chatId, "id.json");
 });
 
-setInterval(async () => {
+let intervalId = setInterval(async () => {
   let res = [];
   try {
     const browser = await puppeteer.launch({
@@ -82,10 +87,13 @@ setInterval(async () => {
         parse_mode: "HTML",
       }));
 
-    console.log(message);
-
     await saveData(res, "cards.json");
   } catch (error) {
     console.log(error);
   }
 }, 60000);
+
+bot.onText(/stop/, async (msg) => {
+  await bot.sendMessage(msg.from.id, "GC_BOT stop!");
+  clearInterval(intervalId);
+});
