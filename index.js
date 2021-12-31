@@ -1,5 +1,6 @@
 const puppeteer = require("puppeteer");
 const cards = require("./cards.json");
+const id = require("./id.json");
 const TelegramBot = require("node-telegram-bot-api");
 const checkDifference = require("./helpers/checkDifference");
 const saveData = require("./helpers/saveData");
@@ -11,7 +12,15 @@ const bot = new TelegramBot(token, { polling: true });
 const url =
   "https://www.avito.ru/kazan/tovary_dlya_kompyutera/komplektuyuschie/videokarty-ASgBAgICAkTGB~pm7gmmZw?cd=1&s=104";
 
-const startParse = async () => {
+let chatId;
+
+bot.onText(/start/, (msg) => {
+  chatId = msg.from.id;
+  bot.sendMessage(msg.from.id, "Парсер запущен!");
+  saveData(chatId, "id.json");
+});
+
+setInterval(async () => {
   let res = [];
   try {
     const browser = await puppeteer.launch({
@@ -68,19 +77,15 @@ const startParse = async () => {
       });
     }
 
-    bot.onText(/\/start/, (msg) => {
-      bot.sendMessage(msg.chat.id, message, {
+    id &&
+      (await bot.sendMessage(id, message, {
         parse_mode: "HTML",
-      });
-    });
+      }));
 
     console.log(message);
 
-    await saveData(res);
+    await saveData(res, "cards.json");
   } catch (error) {
     console.log(error);
-    await browser.close;
   }
-};
-
-startParse();
+}, 60000);

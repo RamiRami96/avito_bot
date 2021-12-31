@@ -1,8 +1,8 @@
 const fs = require("fs");
 const path = require("path");
 
-const saveData = async (data) => {
-  const savePath = path.join(__dirname, "..", "cards.json");
+const saveData = async (data, dataPath) => {
+  const savePath = path.join(__dirname, "..", dataPath);
 
   return new Promise((resolve, reject) => {
     fs.writeFile(savePath, JSON.stringify(data), (err) => {
@@ -10,7 +10,7 @@ const saveData = async (data) => {
         return reject(err);
       }
 
-      console.log("File was saved successfully");
+      console.log("success");
 
       resolve();
     });
