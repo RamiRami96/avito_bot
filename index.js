@@ -5,7 +5,7 @@ const TelegramBot = require("node-telegram-bot-api");
 const checkDifference = require("./helpers/checkDifference");
 const saveData = require("./helpers/saveData");
 
-const token = "1864216628:AAED5lLeMTgKEWFSOBbTYiR30jzRvGaSWqI";
+const token = "Ваш токен от телеграма";
 
 const bot = new TelegramBot(token, { polling: true });
 
@@ -82,10 +82,11 @@ let intervalId = setInterval(async () => {
       });
     }
 
-    id &&
-      (await bot.sendMessage(id, message, {
+    if (id) {
+      await bot.sendMessage(id, message, {
         parse_mode: "HTML",
-      }));
+      })
+    }
 
     await saveData(res, "cards.json");
   } catch (error) {
