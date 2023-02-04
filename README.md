@@ -1,2 +1,2 @@
 # GC_bot
-Телеграм бот для поиска новых видеокарт в Авито в Казани на Node.js
+Telegram bot to search for new video cards in Avito in Kazan on Node.js
