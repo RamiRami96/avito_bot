@@ -97,4 +97,8 @@ class GcBot {
       } catch (error) {
         console.log(error);
       }
-    }, 
+    }, 300000); // run the bot every 5 minutes
+  }
+}
+
+module.exports = GcBot;
