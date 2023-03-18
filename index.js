@@ -1,100 +1,100 @@
 const puppeteer = require("puppeteer");
-const cards = require("./cards.json");
-const id = require("./id.json");
 const TelegramBot = require("node-telegram-bot-api");
 const checkDifference = require("./helpers/checkDifference");
 const saveData = require("./helpers/saveData");
+const Cards = require("./cards");
+const Id = require("./id");
 
-const token = "Ваш токен от телеграма";
+const token = "Your Telegram bot token here";
 
-const bot = new TelegramBot(token, { polling: true });
+class GcBot {
+  constructor(url, chatId) {
+    this.url = url;
+    this.chatId = chatId;
+    this.bot = new TelegramBot(token, { polling: true });
+    this.intervalId = null;
+  }
 
-const url =
-  "https://www.avito.ru/kazan/tovary_dlya_kompyutera/komplektuyuschie/videokarty-ASgBAgICAkTGB~pm7gmmZw?cd=1&s=104";
+  async start() {
+    await this.bot.setMyCommands([
+      { command: "/start", description: "Run GC_BOT" },
+      { command: "/stop", description: "Stop GC_BOT" },
+    ]);
 
-let chatId;
-
-bot.setMyCommands([
-  { command: "/start", description: "Run GC_BOT" },
-  { command: "/stop", description: "Stop GC_BOT" },
-]);
-
-bot.onText(/start/, async (msg) => {
-  chatId = msg.from.id;
-  await bot.sendMessage(msg.from.id, "GC_BOT run!");
-  await saveData(chatId, "id.json");
-});
-
-let intervalId = setInterval(async () => {
-  let res = [];
-  try {
-    const browser = await puppeteer.launch({
-      headless: false,
-      slowMo: 100,
-      devtools: false,
+    this.bot.onText(/\/start/, async (msg) => {
+      this.chatId = msg.chat.id;
+      await this.bot.sendMessage(msg.chat.id, "GC_BOT run!");
+      await saveData(this.chatId, "id.json");
     });
 
-    const page = await browser.newPage();
-
-    await page.setViewport({
-      width: 1400,
-      height: 900,
-    });
-
-    await page.goto(url);
-
-    const html = await page.evaluate(async () => {
-      let arr = [];
+    this.intervalId = setInterval(async () => {
+      let res = [];
       try {
-        const divs = document.querySelectorAll("div.iva-item-body-R_Q9c");
-        divs.forEach((div) => {
-          const a = div.querySelector("div.iva-item-titleStep-_CxvN > a");
-          const price = div.querySelector(
-            "div.iva-item-priceStep-QN8Kl > span.price-root-_Uey3 > span.price-price-BQkOZ > meta[itemprop=price]"
-          );
-
-          arr.push({
-            link: a.href,
-            title: a.title,
-            price: price.content,
-          });
+        const browser = await puppeteer.launch({
+          headless: false,
+          slowMo: 100,
+          devtools: false,
         });
+
+        const page = await browser.newPage();
+
+        await page.setViewport({
+          width: 1400,
+          height: 900,
+        });
+
+        await page.goto(this.url);
+
+        const html = await page.evaluate(() => {
+          let arr = [];
+          try {
+            const divs = document.querySelectorAll("div.iva-item-root-G3n7v");
+            divs.forEach((div) => {
+              const a = div.querySelector("h3.iva-item-title-1Rmmj a");
+              const price = div.querySelector(
+                "span.iva-item-price-price-32jxI span.price-text-E1Y7h.text-text-1PdBw.text-size-s-1PUdo"
+              );
+
+              arr.push({
+                link: a.href,
+                title: a.textContent,
+                price: price.textContent,
+              });
+            });
+          } catch (error) {
+            console.log(error);
+          }
+          return arr;
+        });
+        res.push(html);
+
+        await browser.close();
+
+        res = res.flat();
+
+        let differenceArray = checkDifference(Cards.data, res);
+
+        let message;
+
+        if (!differenceArray.length) {
+          message = "No new graphic cards found";
+        } else {
+          message = differenceArray
+            .map(
+              (card) =>
+                `<b>${card.title}</b>\n<i>${card.price} ₽</i>\n${card.link}`
+            )
+            .join("\n\n");
+        }
+
+        if (Id.data) {
+          await this.bot.sendMessage(Id.data, message, {
+            parse_mode: "HTML",
+          });
+        }
+
+        await saveData(res, "cards.json");
       } catch (error) {
         console.log(error);
       }
-      return arr;
-    });
-    res.push(html);
-
-    await browser.close();
-
-    res = res.flat();
-
-    let differenceArray = checkDifference(cards, res);
-
-    let message;
-
-    if (!differenceArray.length) {
-      message = "No new graphic cards found";
-    } else {
-      differenceArray.map((card) => {
-        message = `<b>${card.title}</b>\n<i>${card.price} ₽</i>\n${card.link}`;
-      });
-    }
-
-    if (id) {
-      await bot.sendMessage(id, message, {
-        parse_mode: "HTML",
-      })
-    }
-
-    await saveData(res, "cards.json");
-  } catch (error) {
-    console.log(error);
-  }
-}, 60000);
-
-bot.onText(/stop/, async (msg) => {
-  await bot.sendMessage(msg.from.id, "GC_BOT stop!");
-  clearInterval(intervalId);
-});
+    }, 
