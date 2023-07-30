@@ -1,7 +1,8 @@
-const puppeteer = require("puppeteer");
-const TelegramBot = require("node-telegram-bot-api");
-const checkDifference = require("./helpers/checkDifference");
-const saveData = require("./helpers/saveData");
+import puppeteer from "puppeteer";
+import TelegramBot from "node-telegram-bot-api";
+import checkDifference from "./helpers/checkDifference";
+import saveData from "./helpers/saveData";
+import { Card } from "./interfaces/cards";
 
 const TOKEN = "YOUR_TELEGRAM_BOT_TOKEN_HERE";
 
@@ -9,7 +10,14 @@ const URL =
   "https://www.avito.ru/kazan/tovary_dlya_kompyutera/komplektuyuschie/videokarty-ASgBAgICAkTGB~pm7gmmZw?cd=1&s=104";
 
 class GC_BOT {
-  constructor(url) {
+  private url: string;
+  private cards: Card[];
+  private id: number | null;
+  private bot: TelegramBot;
+  private intervalId: NodeJS.Timeout | null;
+  private browser: puppeteer.Browser | null;
+
+  constructor(url: string) {
     this.url = url;
     this.cards = [];
     this.id = null;
@@ -18,7 +26,7 @@ class GC_BOT {
     this.browser = null;
   }
 
-  async start() {
+  public async start(): Promise<void> {
     try {
       this.bot.setMyCommands([
         { command: "/start", description: "Run GC_BOT" },
@@ -27,8 +35,8 @@ class GC_BOT {
 
       this.bot.onText(/start/, async (msg) => {
         this.id = msg.chat.id;
-        await this.bot.sendMessage(this.id, "GC_BOT run!");
-        await saveData(this.id, "id.json");
+        await this.bot.sendMessage(this.id!, "GC_BOT run!");
+        await saveData(this.id!, "id.json");
       });
 
       this.intervalId = setInterval(async () => {
@@ -48,20 +56,28 @@ class GC_BOT {
           await page.goto(this.url);
 
           const html = await page.evaluate(() => {
-            let arr = [];
+            const arr: Card[] = [];
             try {
               const divs = document.querySelectorAll("div.iva-item-root-G3n7v");
               divs.forEach((div) => {
-                const a = div.querySelector("a.iva-item-title-link");
+                const a = div.querySelector(
+                  "a.iva-item-title-link"
+                ) as HTMLAnchorElement;
                 const price = div.querySelector(
                   "span.price-text-E1Y7h:nth-child(1) > span:nth-child(1) > meta:nth-child(1)"
                 );
 
-                arr.push({
-                  link: a.href,
-                  title: a.textContent.trim(),
-                  price: price.getAttribute("content"),
-                });
+                const link = a?.href;
+                const title = a?.textContent?.trim();
+                const priceValue = price?.getAttribute("content");
+
+                if (link && title && priceValue) {
+                  arr.push({
+                    link,
+                    title,
+                    price: priceValue,
+                  });
+                }
               });
             } catch (error) {
               console.log(error);
@@ -74,7 +90,7 @@ class GC_BOT {
           let differenceArray = checkDifference(this.cards, html);
           this.cards = html;
 
-          let message;
+          let message: string;
 
           if (!differenceArray.length) {
             message = "No new graphic cards found";
@@ -100,7 +116,9 @@ class GC_BOT {
 
       this.bot.onText(/stop/, async (msg) => {
         await this.bot.sendMessage(msg.chat.id, "GC_BOT stop!");
-        clearInterval(this.intervalId);
+        if (this.intervalId) {
+          clearInterval(this.intervalId);
+        }
       });
     } catch (error) {
       console.log(error);
@@ -109,5 +127,4 @@ class GC_BOT {
 }
 
 const gc_bot = new GC_BOT(URL);
-
 gc_bot.start();
