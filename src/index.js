@@ -5,7 +5,7 @@ const TelegramBot = require("node-telegram-bot-api");
 const checkDifference = require("./helpers/checkDifference");
 const saveData = require("./helpers/saveData");
 
-const token = "1864216628:AAED5lLeMTgKEWFSOBbTYiR30jzRvGaSWqI";
+const token = "YOUR TELEGRAM ID";
 
 const bot = new TelegramBot(token, { polling: true });
 
